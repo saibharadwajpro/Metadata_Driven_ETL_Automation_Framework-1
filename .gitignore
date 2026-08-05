@@ -1,1 +1,21 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
 
+# Credentials and local configuration
+.env
+.databrickscfg
+*.pem
+*.key
+
+# Runtime output
+logs/
+*.log
+
+# IDE and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
