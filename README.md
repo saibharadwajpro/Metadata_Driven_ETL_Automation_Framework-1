@@ -42,3 +42,10 @@ python -c "from pyspark.sql import SparkSession; s=SparkSession.builder.master('
 ```
 
 Azure connectivity can only be verified after valid development credentials and target resource identifiers are placed in the local `.env` file.
+
+## Design documentation
+
+- [Architecture and execution workflow](docs/architecture.md)
+- [Metadata configuration strategy](configuration/metadata-strategy.md)
+- [Metadata repository and relationships](database/README.md)
+- [Azure SQL metadata schema](database/schema.sql)
