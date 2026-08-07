@@ -63,6 +63,27 @@ CREATE TABLE meta.dataset_column (
     CONSTRAINT ck_dataset_column_ordinal CHECK (ordinal_position > 0)
 );
 
+CREATE TABLE meta.source_configuration (
+    source_configuration_id bigint IDENTITY(1,1) PRIMARY KEY,
+    dataset_id          bigint NOT NULL REFERENCES meta.dataset(dataset_id),
+    source_query        nvarchar(max) NULL,
+    load_type           varchar(20) NOT NULL DEFAULT 'FULL',
+    batch_size          int NULL,
+    fetch_size          int NULL,
+    source_filter       nvarchar(2000) NULL,
+    landing_path        nvarchar(1000) NOT NULL,
+    file_format         varchar(40) NOT NULL DEFAULT 'PARQUET',
+    options_json        nvarchar(max) NULL,
+    is_active           bit NOT NULL DEFAULT 1,
+    created_at_utc      datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    updated_at_utc      datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT uq_source_configuration_dataset UNIQUE (dataset_id),
+    CONSTRAINT ck_source_configuration_load_type CHECK (load_type IN ('FULL','INCREMENTAL','CDC')),
+    CONSTRAINT ck_source_configuration_batch_size CHECK (batch_size IS NULL OR batch_size > 0),
+    CONSTRAINT ck_source_configuration_fetch_size CHECK (fetch_size IS NULL OR fetch_size > 0),
+    CONSTRAINT ck_source_configuration_json CHECK (options_json IS NULL OR ISJSON(options_json) = 1)
+);
+
 CREATE TABLE meta.pipeline (
     pipeline_id         bigint IDENTITY(1,1) PRIMARY KEY,
     pipeline_code       varchar(150) NOT NULL,
@@ -147,6 +168,23 @@ CREATE TABLE meta.column_mapping (
     CONSTRAINT ck_mapping_order CHECK (mapping_order > 0)
 );
 
+CREATE TABLE meta.transformation_rule (
+    transformation_rule_id bigint IDENTITY(1,1) PRIMARY KEY,
+    pipeline_step_id    bigint NOT NULL REFERENCES meta.pipeline_step(pipeline_step_id),
+    rule_code           varchar(150) NOT NULL,
+    rule_order          int NOT NULL,
+    rule_type           varchar(40) NOT NULL,
+    rule_expression     nvarchar(max) NOT NULL,
+    rule_description    nvarchar(1000) NULL,
+    is_active           bit NOT NULL DEFAULT 1,
+    created_at_utc      datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    updated_at_utc      datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT uq_transformation_rule_code UNIQUE (pipeline_step_id, rule_code),
+    CONSTRAINT uq_transformation_rule_order UNIQUE (pipeline_step_id, rule_order),
+    CONSTRAINT ck_transformation_rule_order CHECK (rule_order > 0),
+    CONSTRAINT ck_transformation_rule_type CHECK (rule_type IN ('FILTER','DERIVE','CAST','RENAME','AGGREGATE','JOIN','DEDUPLICATE','CUSTOM_SQL'))
+);
+
 CREATE TABLE meta.validation_rule (
     validation_rule_id  bigint IDENTITY(1,1) PRIMARY KEY,
     pipeline_step_id    bigint NOT NULL REFERENCES meta.pipeline_step(pipeline_step_id),
@@ -160,6 +198,24 @@ CREATE TABLE meta.validation_rule (
     CONSTRAINT ck_rule_type CHECK (rule_type IN ('NOT_NULL','UNIQUE','RANGE','REGEX','REFERENTIAL','ROW_COUNT','CUSTOM_SQL')),
     CONSTRAINT ck_rule_severity CHECK (severity IN ('INFO','WARNING','ERROR')),
     CONSTRAINT ck_rule_threshold CHECK (threshold_value IS NULL OR threshold_value >= 0)
+);
+
+CREATE TABLE meta.watermark_configuration (
+    watermark_configuration_id bigint IDENTITY(1,1) PRIMARY KEY,
+    pipeline_step_id    bigint NOT NULL REFERENCES meta.pipeline_step(pipeline_step_id),
+    watermark_name      varchar(150) NOT NULL,
+    watermark_column    nvarchar(256) NOT NULL,
+    value_data_type     varchar(30) NOT NULL,
+    initial_value       nvarchar(1000) NOT NULL,
+    comparison_operator varchar(5) NOT NULL DEFAULT '>',
+    lookback_value      int NOT NULL DEFAULT 0,
+    is_active           bit NOT NULL DEFAULT 1,
+    created_at_utc      datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    updated_at_utc      datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT uq_watermark_configuration UNIQUE (pipeline_step_id, watermark_name),
+    CONSTRAINT ck_watermark_configuration_type CHECK (value_data_type IN ('INTEGER','DECIMAL','DATE','TIMESTAMP','STRING')),
+    CONSTRAINT ck_watermark_comparison CHECK (comparison_operator IN ('>','>=','<','<=')),
+    CONSTRAINT ck_watermark_lookback CHECK (lookback_value >= 0)
 );
 
 CREATE TABLE meta.pipeline_schedule (
@@ -214,6 +270,33 @@ CREATE TABLE audit.etl_step_run (
     CONSTRAINT ck_step_run_dates CHECK (ended_at_utc IS NULL OR started_at_utc IS NULL OR ended_at_utc >= started_at_utc)
 );
 
+CREATE TABLE audit.execution_log (
+    execution_log_id    bigint IDENTITY(1,1) PRIMARY KEY,
+    etl_run_id          uniqueidentifier NOT NULL REFERENCES audit.etl_run(etl_run_id),
+    etl_step_run_id     uniqueidentifier NULL REFERENCES audit.etl_step_run(etl_step_run_id),
+    log_level           varchar(10) NOT NULL DEFAULT 'INFO',
+    event_type          varchar(50) NOT NULL,
+    log_message         nvarchar(4000) NOT NULL,
+    details_json        nvarchar(max) NULL,
+    logged_at_utc       datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT ck_execution_log_level CHECK (log_level IN ('DEBUG','INFO','WARNING','ERROR','CRITICAL')),
+    CONSTRAINT ck_execution_log_json CHECK (details_json IS NULL OR ISJSON(details_json) = 1)
+);
+
+CREATE TABLE audit.error_log (
+    error_log_id        bigint IDENTITY(1,1) PRIMARY KEY,
+    etl_run_id          uniqueidentifier NOT NULL REFERENCES audit.etl_run(etl_run_id),
+    etl_step_run_id     uniqueidentifier NULL REFERENCES audit.etl_step_run(etl_step_run_id),
+    execution_log_id    bigint NULL REFERENCES audit.execution_log(execution_log_id),
+    error_code          varchar(100) NULL,
+    error_type          nvarchar(256) NOT NULL,
+    error_message       nvarchar(4000) NOT NULL,
+    stack_trace         nvarchar(max) NULL,
+    source_component    nvarchar(256) NULL,
+    is_retriable        bit NOT NULL DEFAULT 0,
+    occurred_at_utc     datetime2(3) NOT NULL DEFAULT SYSUTCDATETIME()
+);
+
 CREATE TABLE audit.quality_result (
     quality_result_id   bigint IDENTITY(1,1) PRIMARY KEY,
     etl_step_run_id     uniqueidentifier NOT NULL REFERENCES audit.etl_step_run(etl_step_run_id),
@@ -250,4 +333,8 @@ CREATE INDEX ix_run_pipeline_status
     ON audit.etl_run (pipeline_id, status, created_at_utc DESC);
 CREATE INDEX ix_step_run_run_status
     ON audit.etl_step_run (etl_run_id, status);
+CREATE INDEX ix_execution_log_run_time
+    ON audit.execution_log (etl_run_id, logged_at_utc DESC);
+CREATE INDEX ix_error_log_run_time
+    ON audit.error_log (etl_run_id, occurred_at_utc DESC);
 GO

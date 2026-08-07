@@ -49,3 +49,4 @@ Azure connectivity can only be verified after valid development credentials and 
 - [Metadata configuration strategy](configuration/metadata-strategy.md)
 - [Metadata repository and relationships](database/README.md)
 - [Azure SQL metadata schema](database/schema.sql)
+- [Sample metadata records](database/sample_metadata.sql)
