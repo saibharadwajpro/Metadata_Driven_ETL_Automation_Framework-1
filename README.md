@@ -43,6 +43,25 @@ python -c "from pyspark.sql import SparkSession; s=SparkSession.builder.master('
 
 Azure connectivity can only be verified after valid development credentials and target resource identifiers are placed in the local `.env` file.
 
+## Metadata reader
+
+The `etl_framework.metadata` package reads an active pipeline and all related source configurations, column mappings, transformation rules, validation rules, and watermark settings. It validates the complete manifest before returning it for execution.
+
+```python
+import os
+
+from dotenv import load_dotenv
+from etl_framework.metadata import MetadataReader, pyodbc_connection_factory
+
+load_dotenv()
+reader = MetadataReader(
+    pyodbc_connection_factory(os.environ["SQL_CONNECTION_STRING"])
+)
+metadata = reader.load_pipeline_metadata("CUSTOMER_INCREMENTAL", "dev")
+```
+
+The connection string is read at runtime and is never logged or stored in metadata.
+
 ## Design documentation
 
 - [Architecture and execution workflow](docs/architecture.md)
