@@ -1,0 +1,27 @@
+{
+  "csv": {
+    "file_format": "CSV",
+    "landing_path": "abfss://raw@storage.dfs.core.windows.net/input/customers.csv",
+    "options": {"header": true, "inferSchema": true, "delimiter": ",", "mode": "FAILFAST"}
+  },
+  "json": {
+    "file_format": "JSON",
+    "landing_path": "abfss://raw@storage.dfs.core.windows.net/input/orders.json",
+    "options": {"multiLine": false, "mode": "FAILFAST"}
+  },
+  "parquet": {
+    "file_format": "PARQUET",
+    "landing_path": "abfss://raw@storage.dfs.core.windows.net/input/products/",
+    "options": {"mergeSchema": false}
+  },
+  "sql": {
+    "file_format": "SQL",
+    "source_query": "SELECT CustomerId, CustomerName, ModifiedAt FROM dbo.Customer",
+    "fetch_size": 5000,
+    "options": {
+      "url": "jdbc:sqlserver://server.database.windows.net:1433;database=SampleDb;encrypt=true",
+      "driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver"
+    },
+    "runtime_options": {"user": "resolved-at-runtime", "password": "resolved-at-runtime"}
+  }
+}

@@ -62,6 +62,23 @@ metadata = reader.load_pipeline_metadata("CUSTOMER_INCREMENTAL", "dev")
 
 The connection string is read at runtime and is never logged or stored in metadata.
 
+## Reusable source ingestion
+
+`SparkSourceReader` loads CSV, JSON, Parquet, and SQL/JDBC sources into Spark DataFrames from `SourceConfiguration` metadata. File-reader defaults can be overridden in metadata. SQL credentials should be resolved from Key Vault or managed identity and supplied through `runtime_options`, never stored in metadata.
+
+```python
+from etl_framework.ingestion import SparkSourceReader
+
+source_reader = SparkSourceReader(spark)
+connectivity = source_reader.validate_connectivity(source_configuration)
+if not connectivity.success:
+    raise RuntimeError(connectivity.message)
+
+dataframe = source_reader.read(source_configuration)
+```
+
+See `configuration/source-ingestion.example.json` for all four source configurations.
+
 ## Design documentation
 
 - [Architecture and execution workflow](docs/architecture.md)
