@@ -11,6 +11,7 @@ from typing import Any, Protocol
 from .errors import MetadataNotFoundError
 from .models import (
     ColumnMapping,
+    DatasetColumn,
     PipelineMetadata,
     PipelineStep,
     SourceConfiguration,
@@ -104,6 +105,12 @@ class MetadataReader:
                 for step in steps
                 if step.source_dataset_id is not None
             )
+            dataset_ids = tuple(dict.fromkeys(
+                dataset_id
+                for step in steps
+                for dataset_id in (step.source_dataset_id, step.target_dataset_id)
+                if dataset_id is not None
+            ))
 
             metadata = PipelineMetadata(
                 pipeline_id=pipeline_id,
@@ -121,6 +128,7 @@ class MetadataReader:
                 watermark_configurations=self.read_watermark_configurations(
                     connection, step_ids
                 ),
+                dataset_columns=self.read_dataset_columns(connection, dataset_ids),
             )
 
         if validate:
@@ -191,6 +199,29 @@ class MetadataReader:
             )
             for r in rows
         )
+
+    def read_dataset_columns(
+        self, connection: Connection, dataset_ids: tuple[int, ...]
+    ) -> tuple[DatasetColumn, ...]:
+        rows = self._fetch_by_ids(
+            connection,
+            """SELECT dataset_column_id, dataset_id, column_name,
+                      ordinal_position, data_type, is_nullable,
+                      is_business_key, is_partition_column,
+                      sensitivity_class, default_expression
+               FROM meta.dataset_column
+               WHERE dataset_id IN ({})
+               ORDER BY dataset_id, ordinal_position""",
+            dataset_ids,
+        )
+        return tuple(DatasetColumn(
+            dataset_column_id=int(r["dataset_column_id"]),
+            dataset_id=int(r["dataset_id"]), column_name=str(r["column_name"]),
+            ordinal_position=int(r["ordinal_position"]), data_type=str(r["data_type"]),
+            is_nullable=bool(r["is_nullable"]), is_business_key=bool(r["is_business_key"]),
+            is_partition_column=bool(r["is_partition_column"]),
+            sensitivity_class=r["sensitivity_class"], default_expression=r["default_expression"],
+        ) for r in rows)
 
     def read_column_mappings(
         self, connection: Connection, step_ids: tuple[int, ...]
@@ -281,4 +312,3 @@ class MetadataReader:
             cursor.execute(query, *parameters)
             columns = [str(column[0]) for column in cursor.description]
             return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
-

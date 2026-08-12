@@ -3,6 +3,7 @@
 from .errors import MetadataNotFoundError, MetadataValidationError
 from .models import (
     ColumnMapping,
+    DatasetColumn,
     PipelineMetadata,
     PipelineStep,
     SourceConfiguration,
@@ -15,6 +16,7 @@ from .validation import validate_metadata
 
 __all__ = [
     "ColumnMapping",
+    "DatasetColumn",
     "MetadataNotFoundError",
     "MetadataReader",
     "MetadataValidationError",
@@ -27,4 +29,3 @@ __all__ = [
     "pyodbc_connection_factory",
     "validate_metadata",
 ]
-

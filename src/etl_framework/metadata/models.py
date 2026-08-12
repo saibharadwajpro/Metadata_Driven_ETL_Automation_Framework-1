@@ -37,6 +37,20 @@ class SourceConfiguration:
 
 
 @dataclass(frozen=True)
+class DatasetColumn:
+    dataset_column_id: int
+    dataset_id: int
+    column_name: str
+    ordinal_position: int
+    data_type: str
+    is_nullable: bool
+    is_business_key: bool
+    is_partition_column: bool
+    sensitivity_class: str | None
+    default_expression: str | None
+
+
+@dataclass(frozen=True)
 class ColumnMapping:
     column_mapping_id: int
     pipeline_step_id: int
@@ -94,4 +108,4 @@ class PipelineMetadata:
     transformation_rules: tuple[TransformationRule, ...]
     validation_rules: tuple[ValidationRule, ...]
     watermark_configurations: tuple[WatermarkConfiguration, ...]
-
+    dataset_columns: tuple[DatasetColumn, ...] = ()

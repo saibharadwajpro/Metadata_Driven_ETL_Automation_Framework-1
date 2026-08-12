@@ -79,6 +79,19 @@ dataframe = source_reader.read(source_configuration)
 
 See `configuration/source-ingestion.example.json` for all four source configurations.
 
+## Schema validation
+
+The metadata reader loads the expected schema from `meta.dataset_column`. `SchemaValidator` compares it with a Spark DataFrame schema without scanning data and generates a structured report containing missing columns, unexpected columns, name/case differences, data-type mismatches, and nullability mismatches.
+
+```python
+from etl_framework.validation import SchemaValidator
+
+expected = tuple(c for c in metadata.dataset_columns if c.dataset_id == source_dataset_id)
+report = SchemaValidator().validate_dataframe(dataframe, expected)
+if not report.is_valid:
+    print(report.to_dict())
+```
+
 ## Design documentation
 
 - [Architecture and execution workflow](docs/architecture.md)

@@ -72,6 +72,20 @@ def valid_rows() -> dict[str, list[dict[str, object]]]:
                 "options_json": '{"compression": "snappy"}',
             }
         ],
+        "meta.dataset_column": [
+            {
+                "dataset_column_id": 41,
+                "dataset_id": 30,
+                "column_name": "CustomerId",
+                "ordinal_position": 1,
+                "data_type": "BIGINT",
+                "is_nullable": False,
+                "is_business_key": True,
+                "is_partition_column": False,
+                "sensitivity_class": None,
+                "default_expression": None,
+            }
+        ],
         "meta.column_mapping": [
             {
                 "column_mapping_id": 50,
@@ -128,6 +142,7 @@ def test_loads_and_validates_complete_pipeline_metadata() -> None:
     assert metadata.pipeline_id == 10
     assert metadata.steps[0].config == {"partitions": 4}
     assert metadata.source_configurations[0].options == {"compression": "snappy"}
+    assert metadata.dataset_columns[0].column_name == "CustomerId"
     assert metadata.column_mappings[0].target_column == "customer_id"
     assert metadata.transformation_rules[0].rule_code == "ACTIVE_ONLY"
     assert metadata.validation_rules[0].severity == "ERROR"
