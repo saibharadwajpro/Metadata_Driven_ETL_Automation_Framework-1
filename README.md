@@ -92,6 +92,28 @@ if not report.is_valid:
     print(report.to_dict())
 ```
 
+## Metadata-driven transformations
+
+`TransformationEngine` reads the existing column mappings, transformation rules, and target-column metadata to produce a load-ready Spark DataFrame. It supports dynamic expressions and casts, target defaults, required-column null policies (`ERROR`, `DROP`, or `ALLOW`), and ordered `FILTER`, `DERIVE`, `CAST`, `RENAME`, and `DEDUPLICATE` business rules.
+
+```python
+from etl_framework.transformation import TransformationEngine
+
+result = TransformationEngine().transform(
+    dataframe,
+    pipeline_step_id=step.pipeline_step_id,
+    column_mappings=metadata.column_mappings,
+    transformation_rules=metadata.transformation_rules,
+    target_columns=tuple(
+        column for column in metadata.dataset_columns
+        if column.dataset_id == step.target_dataset_id
+    ),
+)
+load_ready_dataframe = result.dataframe
+```
+
+Transformation expressions are trusted configuration and should pass metadata review before activation. Rules requiring another DataFrame, such as joins and aggregations, are rejected by this single-input engine and should be executed by an explicitly configured multi-input component.
+
 ## Design documentation
 
 - [Architecture and execution workflow](docs/architecture.md)
