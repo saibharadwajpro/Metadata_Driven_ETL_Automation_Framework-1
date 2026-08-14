@@ -114,6 +114,25 @@ load_ready_dataframe = result.dataframe
 
 Transformation expressions are trusted configuration and should pass metadata review before activation. Rules requiring another DataFrame, such as joins and aggregations, are rejected by this single-input engine and should be executed by an explicitly configured multi-input component.
 
+## Record validation and rejection
+
+`DataValidator` applies expected-column metadata and active validation rules to Spark records. Non-nullable columns become mandatory checks, declared data types are verified with safe casts, business-key or `UNIQUE` rules identify duplicates, and boolean `NOT_NULL`, `RANGE`, `REGEX`, `REFERENTIAL`, and `CUSTOM_SQL` expressions are evaluated as pass conditions.
+
+```python
+from etl_framework.validation import DataValidator
+
+result = DataValidator().validate(
+    load_ready_dataframe,
+    pipeline_step_id=step.pipeline_step_id,
+    expected_columns=target_columns,
+    validation_rules=metadata.validation_rules,
+)
+accepted_dataframe = result.accepted
+rejected_dataframe = result.rejected
+```
+
+Rejected rows retain their source fields and include `__validation_errors` and `__validation_warnings`. Warning and informational failures are reported but do not reject a row. The report contains total, accepted, rejected, and rule-level failure counts.
+
 ## Design documentation
 
 - [Architecture and execution workflow](docs/architecture.md)
