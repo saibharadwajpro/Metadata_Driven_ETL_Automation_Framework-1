@@ -133,6 +133,32 @@ rejected_dataframe = result.rejected
 
 Rejected rows retain their source fields and include `__validation_errors` and `__validation_warnings`. Warning and informational failures are reported but do not reject a row. The report contains total, accepted, rejected, and rule-level failure counts.
 
+## Incremental loading and upsert
+
+`WatermarkRepository` retrieves the last watermark associated with a successful run, falling back to the configured initial value. `IncrementalLoadCoordinator` applies the configured boundary, performs a keyed merge through a reusable target, and advances the watermark only after the merge succeeds.
+
+```python
+from etl_framework.loading import (
+    DataFrameUpsertTarget,
+    IncrementalLoadCoordinator,
+    WatermarkRepository,
+)
+from etl_framework.metadata import pyodbc_connection_factory
+
+repository = WatermarkRepository(pyodbc_connection_factory(sql_connection_string))
+coordinator = IncrementalLoadCoordinator(repository)
+target = DataFrameUpsertTarget(current_target_dataframe, order_by="modified_at")
+result = coordinator.execute(
+    accepted_dataframe,
+    configuration=watermark_configuration,
+    target=target,
+    key_columns=["customer_id"],
+    etl_run_id=etl_run_id,
+)
+```
+
+For a persistent Delta or SQL destination, implement the same `merge(dataframe, key_columns)` target contract using the platform's transactional merge. The ETL run must be marked successful before the SQL watermark repository accepts the final state update; failed target merges never advance it.
+
 ## Design documentation
 
 - [Architecture and execution workflow](docs/architecture.md)
